@@ -1,55 +1,33 @@
-buildscript {
-    repositories {
-        maven {
-            url 'https://plugins.gradle.org/m2/'
-        }
-    }
-    dependencies {
-        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.11.0'
-        classpath 'com.gradle.publish:plugin-publish-plugin:0.9.1'
-    }
+plugins {
+    id("groovy-gradle-plugin")
+    id("com.github.hierynomus.license").version("latest.integration")
 }
 
-apply plugin: 'groovy'
-apply plugin: 'license'
-apply plugin: 'maven'
-apply plugin: 'eclipse'
-apply plugin: 'com.gradle.plugin-publish'
+plugins.apply("maven-publish")
 
 defaultTasks 'licenseFormat', 'build'
 
 group = 'org.spongepowered'
-version = buildVersion + (buildType == 'RELEASE' ? '' : "-$buildType")
-archivesBaseName = 'mixingradle'
-targetCompatibility = '1.6'
-sourceCompatibility = '1.6'
+version = "0.8-SNAPSHOT"
+
+compileGroovy {
+    targetCompatibility = 16
+    sourceCompatibility = 16
+}
 
 repositories {
     mavenCentral()
+
     maven {
         url 'https://repo.gradle.org/gradle/libs-releases-local/'
     }
 }
 
-configurations {
-    deployerJars
-}
-
 dependencies {
     implementation gradleApi()
-//    implementation 'org.codehaus.groovy:groovy-all:2.5.8'
     implementation 'com.google.guava:guava:21.0'
-    implementation 'org.ow2.asm:asm-tree:6.2'
-    deployerJars 'org.apache.maven.wagon:wagon-ftp:2.7'
-}
-
-eclipse.classpath.file.whenMerged {
-    entries.each {
-        if (it.path.contains('gradle-api') && it.sourcePath == null) {
-            // Source attachment doesn't currently work when using gradleApi() dependency so include manually
-            it.sourcePath = fileReference(file('lib/core-api.zip'))
-        }
-    }
+    implementation 'org.ow2.asm:asm-tree:latest.integration'
+    //deployerJars 'org.apache.maven.wagon:wagon-ftp:2.7'
 }
 
 processResources {
@@ -62,11 +40,13 @@ license {
         organization = project.organization
         url = project.url
     }
+
     include '**/*.groovy'
     header file('HEADER.txt')
     sourceSets = project.sourceSets
     ignoreFailures false
     strictCheck true
+
     mapping {
         java = 'SLASHSTAR_STYLE'
     }
@@ -81,91 +61,21 @@ jar {
     )
 }
 
-/* task signJar() {
-    inputs.files(jar.outputs)
-    outputs.files(jar.outputs)
-    doLast {
-        ant.signjar(
-            alias: project.keyStoreCert,
-            jar: jar.outputs.files[0],
-            keystore: project.keyStorePath,
-            storepass: project.keyStoreSecret,
-            keypass: project.keyStoreSecret,
-            tsaurl: project.timestampAuthority,
-            preservelastmodified: 'true',
-            verbose: true
-        )
-    }
-}
-build.dependsOn(signJar) */
-
-task groovydocJar(type: Jar, dependsOn: groovydoc) {
-    from groovydoc.destinationDir
-    classifier = 'groovydoc'
+java {
+    withSourcesJar()
 }
 
-artifacts {
-    archives jar
-    archives groovydocJar
-}
-
-pluginBundle {
-    website = 'http://www.gradle.org/'
-    vcsUrl = 'https://github.com/SpongePowered/MixinGradle'
-    description = 'Gradle plugin for SpongePowered Mixin'
-    tags = ['spongepowered', 'sponge', 'mixin']
+gradlePlugin {
     plugins {
         patcher {
-            id = 'org.spongepowered.mixin'
-            displayName = 'SpongePowered Mixin Gradle Plugin'
+            id = "mixin"
+            implementationClass = "org.spongepowered.asm.gradle.plugins.MixinGradlePlugin"
         }
     }
 }
 
-uploadArchives {
+publishing {
     repositories {
-
-        mavenDeployer {
-            configuration = configurations.deployerJars
-
-            if (project.hasProperty("spongeRepo")) {
-                repository(url: project.spongeRepo) {
-                    authentication(userName: project.spongeUsername, password: project.spongePassword)
-                }
-            } else  {
-                repository(url: 'file://' + rootProject.file('repo').getAbsolutePath())
-            }
-
-            pom {
-                groupId = project.group
-                version = project.version
-                artifactId = project.archivesBaseName
-                project {
-                    name project.archivesBaseName
-                    packaging 'jar'
-                    description 'MixinGradle'
-                    url 'http://www.spongepowered.org/'
-
-                    scm {
-                        url 'https://github.com/SpongePowered/MixinGradle'
-                        connection 'scm:git:git://github.com/SpongePowered/MixinGradle.git'
-                        developerConnection 'scm:git:git@github.com:SpongePowered/MixinGradle.git'
-                    }
-
-                    issueManagement {
-                        system 'GitHub Issues'
-                        url 'https://github.com/SpongePowered/MixinGradle/issues'
-                    }
-
-                    licenses {
-                        license {
-                            name 'MIT license'
-                            url 'http://opensource.org/licenses/MIT'
-                            distribution 'repo'
-                        }
-                    }
-                }
-            }
-        }
+        maven {url = "https://auoeke.jfrog.io/artifactory/maven"}
     }
 }

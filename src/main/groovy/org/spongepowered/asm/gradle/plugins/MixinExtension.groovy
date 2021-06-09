@@ -273,10 +273,6 @@ public class MixinExtension {
             throw new InvalidUserDataException("Could not find property 'minecraft', or 'patcher' on $project, ensure ForgeGradle is applied.")
         }
         
-        if (!this.disableEclipseAddon) {
-            MixinEclipse.configureEclipse(this, this.project, this.projectType)
-        }
-        
         this.init(this.project, this.projectType)
     }
     
